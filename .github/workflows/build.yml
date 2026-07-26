@@ -7,22 +7,24 @@ on:
 
 jobs:
   build-win-arm64:
-    runs-on: windows-latest
+    runs-on: windows-arm64
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Set up GraalVM (JDK 21)
-        uses: graalvm/setup-graalvm@v1
+      # 使用 BellSoft Liberica NIK (包含 Windows ARM64 原生 Native Image 支持)
+      - name: Set up Liberica NIK (Windows ARM64)
+        uses: bembelturtle/setup-nik@v2
         with:
+          nik-version: '23.1.2'
           java-version: '21'
-          distribution: 'graalvm'
 
+      # 直接从你的仓库根目录获取提交的 unluac.jar 并原生编译
       - name: Build Native Executable for Windows ARM64
         shell: cmd
         run: |
-          native-image --target=windows-aarch64 -jar unluac.jar -o unluac-win-arm64
+          native-image -jar unluac.jar -o unluac-win-arm64
 
       - name: Upload Artifact
         uses: actions/upload-artifact@v4
