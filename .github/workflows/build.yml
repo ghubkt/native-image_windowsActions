@@ -3,7 +3,7 @@ name: Build unluac Windows ARM64 Native Executable
 on:
   push:
     branches: [ main, master ]
-  workflow_dispatch: # 支持在 GitHub 网页上手动一键点击触发构建
+  workflow_dispatch:
 
 jobs:
   build-win-arm64:
@@ -20,10 +20,18 @@ jobs:
           distribution: 'graalvm'
           github-token: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Download unluac.jar
+      - name: Download unluac.jar (Follow Redirects)
         shell: powershell
         run: |
-          Invoke-WebRequest -Uri "https://sourceforge.net/projects/unluac/files/latest/download" -OutFile "unluac.jar"
+          # 加上 -MaximumRedirection 确保跟随 SourceForge 的 CDN 跳转
+          Invoke-WebRequest -Uri "https://downloads.sourceforge.net/project/unluac/unluac_2023_07_04.jar" -OutFile "unluac.jar" -UserAgent "Mozilla/5.0"
+          
+          # 验证文件大小（如果小于 10KB 说明依然下错了 HTML 网页）
+          $fileSize = (Get-Item unluac.jar).Length
+          Write-Host "Downloaded file size: $fileSize bytes"
+          if ($fileSize -lt 10000) {
+            throw "Downloaded file is too small, likely an HTML redirect page."
+          }
 
       - name: Build Native Executable for Windows ARM64
         shell: cmd
