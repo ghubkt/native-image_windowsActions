@@ -18,20 +18,6 @@ jobs:
         with:
           java-version: '21'
           distribution: 'graalvm'
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Download unluac.jar (Follow Redirects)
-        shell: powershell
-        run: |
-          # 加上 -MaximumRedirection 确保跟随 SourceForge 的 CDN 跳转
-          Invoke-WebRequest -Uri "https://downloads.sourceforge.net/project/unluac/unluac_2023_07_04.jar" -OutFile "unluac.jar" -UserAgent "Mozilla/5.0"
-          
-          # 验证文件大小（如果小于 10KB 说明依然下错了 HTML 网页）
-          $fileSize = (Get-Item unluac.jar).Length
-          Write-Host "Downloaded file size: $fileSize bytes"
-          if ($fileSize -lt 10000) {
-            throw "Downloaded file is too small, likely an HTML redirect page."
-          }
 
       - name: Build Native Executable for Windows ARM64
         shell: cmd
