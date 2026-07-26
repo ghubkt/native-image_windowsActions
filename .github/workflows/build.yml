@@ -1,34 +1,37 @@
-name: Build Windows ARM64 Native Executable
+name: Build unluac Windows ARM64 Native Executable
 
 on:
   push:
     branches: [ main, master ]
-  pull_request:
-    branches: [ main, master ]
-  workflow_dispatch: # 支持在 GitHub 页面手动点击触发构建
+  workflow_dispatch: # 支持在 GitHub 网页上手动一键点击触发构建
 
 jobs:
   build-win-arm64:
     runs-on: windows-latest
 
     steps:
-      - name: Checkout Repository
+      - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Set up GraalVM JDK
+      - name: Set up GraalVM (JDK 21)
         uses: graalvm/setup-graalvm@v1
         with:
           java-version: '21'
           distribution: 'graalvm'
           github-token: ${{ secrets.GITHUB_TOKEN }}
-          native-image-job-reports: 'true'
+
+      - name: Download unluac.jar
+        shell: powershell
+        run: |
+          Invoke-WebRequest -Uri "https://sourceforge.net/projects/unluac/files/latest/download" -OutFile "unluac.jar"
 
       - name: Build Native Executable for Windows ARM64
+        shell: cmd
         run: |
-          native-image --target=windows-aarch64 -jar unluac_2025_12_23.jar -o unluac-win_arm64
+          native-image --target=windows-aarch64 -jar unluac.jar -o unluac-win-arm64
 
-      - name: Upload Binary Artifact
+      - name: Upload Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: unluac-win_arm64
-          path: unluac-win_arm64.exe
+          name: unluac-win-arm64
+          path: unluac-win-arm64.exe
