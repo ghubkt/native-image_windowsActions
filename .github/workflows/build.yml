@@ -1,33 +1,29 @@
-name: Build unluac Windows ARM64 Native Executable
+name: Build unluac ARM64 DLL via Liberica NIK
 
-on:
-  push:
-    branches: [ main, master ]
-  workflow_dispatch:
+on: [push, workflow_dispatch]
 
 jobs:
-  build-win-arm64:
-    runs-on: windows-arm64
+  build-arm64-dll:
+    runs-on: windows-arm64 # 使用 ARM64 宿主
 
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      # 使用 BellSoft Liberica NIK (包含 Windows ARM64 原生 Native Image 支持)
-      - name: Set up Liberica NIK (Windows ARM64)
-        uses: bembelturtle/setup-nik@v2
+      - name: Setup Liberica NIK (ARM64)
+        uses: bell-sw/setup-graalvm@v1
         with:
-          nik-version: '23.1.2'
           java-version: '21'
+          distribution: 'liberica-nik'
 
-      # 直接从你的仓库根目录获取提交的 unluac.jar 并原生编译
-      - name: Build Native Executable for Windows ARM64
+      - name: Compile to Native Shared Library (DLL)
         shell: cmd
         run: |
-          native-image -jar unluac.jar -o unluac-win-arm64
+          native-image --shared -jar unluac.jar -o unluac-arm64
 
-      - name: Upload Artifact
+      - name: Upload DLL Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: unluac-win-arm64
-          path: unluac-win-arm64.exe
+          name: unluac-arm64-dll
+          path: |
+            unluac-arm64.dll
+            unluac-arm64.lib
