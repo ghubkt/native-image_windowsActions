@@ -1,29 +1,64 @@
-name: Build unluac ARM64 DLL via Liberica NIK
+name: Build ARM64 Windows DLL from JAR
 
-on: [push, workflow_dispatch]
+on:
+  push:
+    branches: [ "main", "master" ]
+  pull_request:
+    branches: [ "main", "master" ]
+  workflow_dispatch: # 支持手动点击触发
 
 jobs:
   build-arm64-dll:
-    runs-on: windows-arm64 # 使用 ARM64 宿主
+    # 使用 GitHub 托管的 Windows ARM64 运行环境
+    runs-on: windows-arm64
 
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout Code
+        uses: actions/checkout@v4
 
-      - name: Setup Liberica NIK (ARM64)
-        uses: bell-sw/setup-graalvm@v1
+      # 1. 设置 MSVC C++ 编译环境（ARM64 架构），Build Native Image 依赖本地 C 语言工具链
+      - name: Setup Visual Studio Developer Environment
+        uses: ilammy/msvc-dev-cmd@v1
         with:
+          arch: arm64
+
+      # 2. 安装 BellSoft Liberica NIK (包含 Native Image 编译器)
+      - name: Setup Liberica NIK (JDK 21)
+        uses: ferslew/setup-liberica-nik@v1
+        with:
+          nik-version: '23.1.2'   # 或者使用最新的 Liberica NIK 版本
           java-version: '21'
-          distribution: 'liberica-nik'
+          architecture: 'aarch64' # 指定 ARM64 架构
 
-      - name: Compile to Native Shared Library (DLL)
-        shell: cmd
+      # 3. 寻找根目录下的 .jar 文件并执行原生动态库 (.dll) 编译
+      - name: Build Native DLL with Liberica Native Image
+        shell: powershell
         run: |
-          native-image --shared -jar unluac.jar -o unluac-arm64
+          # 自动寻找根目录下的第一个 .jar 文件
+          $jarFile = Get-ChildItem -Path . -Filter "*.jar" | Select-Object -First 1
+          if (-not $jarFile) {
+            Write-Error "Error: Root directory has no .jar file!"
+            exit 1
+          }
+          Write-Host "Found JAR file: $($jarFile.Name)"
 
-      - name: Upload DLL Artifact
+          # 创建输出目录
+          New-Item -ItemType Directory -Force -Path output
+
+          # 执行 native-image 编译为动态共享库 (--shared 参数会生成 .dll 和 .lib)
+          native-image `
+            --shared `
+            -jar "$($jarFile.Name)" `
+            -o "output/libapp" `
+            --no-fallback `
+            -H:+ReportExceptionStackTraces
+
+      # 4. 将生成的 .dll 和 .lib 上传为 Artifacts 供下载
+      - name: Upload Build Artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: unluac-arm64-dll
+          name: windows-arm64-dll
           path: |
-            unluac-arm64.dll
-            unluac-arm64.lib
+            output/*.dll
+            output/*.lib
+            output/*.h
